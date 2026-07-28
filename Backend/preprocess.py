@@ -2,26 +2,27 @@ import os
 import cv2
 import numpy as np
 
-IMAGE_SIZE = (224, 224)
+from config import IMAGE_SIZE
 
 
 def load_images(folder, label):
     images = []
     labels = []
 
-    for file in os.listdir(folder):
-        path = os.path.join(folder, file)
+    for filename in os.listdir(folder):
 
-        img = cv2.imread(path)
+        path = os.path.join(folder, filename)
 
-        if img is None:
+        image = cv2.imread(path)
+
+        if image is None:
             continue
 
-        img = cv2.resize(img, IMAGE_SIZE)
+        image = cv2.resize(image, IMAGE_SIZE)
 
-        img = img / 255.0
+        image = image.astype("float32") / 255.0
 
-        images.append(img)
+        images.append(image)
         labels.append(label)
 
     return images, labels

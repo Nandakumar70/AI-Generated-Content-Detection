@@ -1,7 +1,9 @@
-IMAGE_SIZE = (224, 224)
+IMAGE_SIZE = (128, 128)
 
 BATCH_SIZE = 32
 
 EPOCHS = 10
 
-MODEL_PATH = "../Models/image_detector.keras"
+LEARNING_RATE = 0.001
+
+MODEL_PATH = "../Models/cnn_model.keras"
