@@ -2,27 +2,38 @@ import os
 import cv2
 import numpy as np
 
-from config import IMAGE_SIZE
-
+IMAGE_SIZE = (128, 128)
 
 def load_images(folder, label):
     images = []
     labels = []
 
-    for filename in os.listdir(folder):
+    files = os.listdir(folder)
 
-        path = os.path.join(folder, filename)
+    print(f"\nLoading images from: {folder}")
+    print(f"Total images found: {len(files)}\n")
 
-        image = cv2.imread(path)
+    count = 0
 
-        if image is None:
+    for file in files:
+        path = os.path.join(folder, file)
+
+        img = cv2.imread(path)
+
+        if img is None:
             continue
 
-        image = cv2.resize(image, IMAGE_SIZE)
+        img = cv2.resize(img, IMAGE_SIZE)
+        img = img.astype(np.float32) / 255.0
 
-        image = image.astype("float32") / 255.0
-
-        images.append(image)
+        images.append(img)
         labels.append(label)
+
+        count += 1
+
+        if count % 1000 == 0:
+            print(f"{count}/{len(files)} images loaded...")
+
+    print(f"Finished loading {count} images from {folder}\n")
 
     return images, labels
