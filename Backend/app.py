@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from image_detector import router as image_detector_router
+from Backend.image_detector import router as image_detector_router
 
 # Initialize the main FastAPI application
 app = FastAPI(title="AI Image Detection API")

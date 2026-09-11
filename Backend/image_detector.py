@@ -7,7 +7,7 @@ import io
 import os
 
 # Import your new CLIP model architecture
-from models.clip_model import CLIPFakeDetector
+from Backend.models.clip_model import CLIPFakeDetector
 
 router = APIRouter()
 
@@ -16,7 +16,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Loading CLIP model on: {device.type.upper()}")
 
 model = CLIPFakeDetector().to(device)
-MODEL_PATH = "../Models/clip_model.pt"
+MODEL_PATH = "Backend/models/clip_model.pt"
 
 # 2. Load Weights and Set to Evaluation Mode
 if os.path.exists(MODEL_PATH):
@@ -58,7 +58,8 @@ async def detect_image(file: UploadFile = File(...)):
         # Run inference without tracking gradients to save memory and increase speed
         with torch.no_grad():
             output = model(input_tensor)
-            probability = output.item() # Get the raw float value
+            # Fixed: Apply sigmoid to convert the raw logit into a 0.0 - 1.0 probability
+            probability = torch.sigmoid(output).item() 
 
         # 0 = AI-Generated (FAKE), 1 = Real Photograph
         is_real = probability > 0.5
