@@ -1,39 +1,61 @@
-import tensorflow as tf
-import numpy as np
+import sys
+import os
+import torch
+from torchvision import transforms
+from PIL import Image
+from Backend.models.clip_model import CLIPFakeDetector
 
-from config import IMAGE_SIZE, MODEL_PATH
+def test_image(image_path):
+    if not os.path.exists(image_path):
+        print(f"❌ Error: Image '{image_path}' not found.")
+        return
 
-print("Loading model...")
-model = tf.keras.models.load_model(MODEL_PATH)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Loading model on {device.type.upper()}...")
 
-print("Model loaded.")
+    model = CLIPFakeDetector().to(device)
+    weights_path = "Backend/models/clip_model.pt"
 
-image_path = input("\nEnter image path: ").strip()
+    if os.path.exists(weights_path):
+        model.load_state_dict(torch.load(weights_path, map_location=device, weights_only=True))
+        model.eval()
+    else:
+        print("⚠️ Error: clip_model.pt not found. Run the training script first.")
+        return
 
-# Load exactly like image_dataset_from_directory()
-img = tf.keras.utils.load_img(
-    image_path,
-    target_size=IMAGE_SIZE,
-    color_mode="rgb"
-)
+    transform = transforms.Compose([
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+        transforms.Normalize(
+            mean=[0.48145466, 0.4578275, 0.40821073],
+            std=[0.26862954, 0.26130258, 0.27577711]
+        )
+    ])
 
-img = tf.keras.utils.img_to_array(img)
+    try:
+        img = Image.open(image_path).convert("RGB")
+        input_tensor = transform(img).unsqueeze(0).to(device)
 
-print("\nImage Info")
-print("Shape :", img.shape)
-print("Dtype :", img.dtype)
-print("Min   :", img.min())
-print("Max   :", img.max())
-print("Mean  :", img.mean())
+        with torch.no_grad():
+            output = model(input_tensor)
+            prob = torch.sigmoid(output).item()
 
-# DO NOT divide by 255
-img = np.expand_dims(img, axis=0)
+        # 0 = AI, 1 = REAL
+        is_real = prob > 0.5
+        label = "Real Photograph" if is_real else "AI-Generated"
+        confidence = prob if is_real else (1.0 - prob)
 
-prediction = model.predict(img, verbose=0)[0][0]
+        print("\n" + "="*40)
+        print(f"File       : {image_path}")
+        print(f"Prediction : {label}")
+        print(f"Confidence : {confidence * 100:.2f}%")
+        print("="*40 + "\n")
 
-print("\nRaw Prediction :", prediction)
+    except Exception as e:
+        print(f"❌ Error processing image: {e}")
 
-if prediction >= 0.5:
-    print("Prediction : REAL")
-else:
-    print("Prediction : AI")
+if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        test_image(sys.argv[1])
+    else:
+        print("Usage: python -m Backend.test_image_model <path_to_image>")

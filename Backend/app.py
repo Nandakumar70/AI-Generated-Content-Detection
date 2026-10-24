@@ -1,22 +1,25 @@
 from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
-from Backend.image_detector import router as image_detector_router
 
-# Initialize the main FastAPI application
-app = FastAPI(title="AI Image Detection API")
+# Import your routers
+from Backend.image_detector import router as image_router
+from Backend.text_detector import router as text_router
 
-# Setup CORS so your frontend can communicate with this backend
+app = FastAPI(title="VeritasAI Forensic API")
+
 app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins
-    allow_credentials=True,
-    allow_methods=["*"],  # Allows all methods
-    allow_headers=["*"],  # Allows all headers
+    CORSMiddleware, 
+    allow_origins=["*"], 
+    allow_methods=["*"], 
+    allow_headers=["*"]
 )
 
-# Connect the image detection endpoints
-app.include_router(image_detector_router)
+# Connect the endpoints
+app.include_router(image_router)
+app.include_router(text_router)
 
-@app.get("/")
-def read_root():
-    return {"message": "AI Image Detection API is running. Go to /docs to test it!"}
+@app.get("/", response_class=HTMLResponse)
+async def serve_ui():
+    with open("index.html", "r", encoding="utf-8") as f:
+        return f.read()
