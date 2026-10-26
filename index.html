@@ -2,129 +2,758 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>VeritasAI | Synthetic Content Forensics</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Veritas | Content Authenticity Inspector</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #f8fafc;
+            color: #0f172a;
+        }
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        /* Custom subtle transition for progress bar */
+        .progress-bar {
+            transition: width 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        /* Drag hover state */
+        .dropzone-active {
+            border-color: #3b82f6 !important;
+            background-color: #eff6ff !important;
+        }
+    </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col items-center py-10 px-4">
-    <div class="max-w-3xl w-full bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-8">
-        <div class="flex items-center justify-between border-b border-slate-800 pb-5 mb-6">
-            <div>
-                <h1 class="text-2xl font-bold tracking-tight text-white">VERITAS<span class="text-indigo-400">AI</span></h1>
-                <p class="text-sm text-slate-400">Multimodal Synthetic Content Detection</p>
-            </div>
-            <div class="flex space-x-2 bg-slate-950 p-1 rounded-lg border border-slate-800">
-                <button id="tabImgBtn" onclick="switchTab('image')" class="px-4 py-1.5 text-sm font-medium rounded-md bg-indigo-500 text-white shadow">Image</button>
-                <button id="tabTxtBtn" onclick="switchTab('text')" class="px-4 py-1.5 text-sm font-medium rounded-md text-slate-400 hover:text-white transition">Text</button>
-            </div>
-        </div>
+<body class="min-h-screen flex flex-col justify-between antialiased text-slate-800">
 
-        <!-- Image Upload Section -->
-        <div id="imageSection">
-            <label class="flex flex-col items-center justify-center border-2 border-dashed border-slate-700 hover:border-indigo-500 rounded-xl p-6 cursor-pointer transition bg-slate-950/50">
-                <input type="file" id="fileInput" accept="image/*" class="hidden" onchange="verifyImage()">
-                <img id="preview" class="max-h-64 rounded-lg mb-4 hidden object-contain border border-slate-800" />
-                <div id="uploadPrompt" class="text-center">
-                    <p class="text-base font-medium text-slate-200">Click to upload an image</p>
-                    <p class="text-xs text-slate-500 mt-1">Evaluated via CLIP ViT-L/14 + Linear SVM</p>
+    <!-- Top Navigation Bar -->
+    <header class="w-full bg-white border-b border-slate-200 sticky top-0 z-30">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-lg bg-slate-900 text-white flex items-center justify-center shadow-sm">
+                    <i class="fa-solid fa-magnifying-glass-chart text-sm"></i>
                 </div>
-            </label>
-        </div>
-
-        <!-- Text Input Section -->
-        <div id="textSection" class="hidden">
-            <textarea id="textInput" rows="6" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-4 text-slate-200 focus:outline-none focus:border-indigo-500 transition" placeholder="Paste text here to detect AI generation (ChatGPT, Claude, etc.)..."></textarea>
-            <button onclick="verifyText()" class="mt-4 w-full bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-3 rounded-xl transition shadow-lg">Analyze Text</button>
-        </div>
-
-        <!-- Loading Spinner -->
-        <div id="loader" class="hidden text-center py-6 text-indigo-400 font-mono text-sm animate-pulse">
-            Analyzing content...
-        </div>
-
-        <!-- Results Panel -->
-        <div id="resultBox" class="hidden mt-6 space-y-5 border-t border-slate-800 pt-6">
-            <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-xs uppercase tracking-wider text-slate-400">Forensic Verdict</p>
-                    <h2 id="verdictText" class="text-2xl font-extrabold mt-1"></h2>
-                </div>
-                <div class="text-right">
-                    <p class="text-xs uppercase tracking-wider text-slate-400">Confidence</p>
-                    <p id="confidenceText" class="text-2xl font-mono font-bold text-white mt-1"></p>
+                    <div class="flex items-center gap-2">
+                        <span class="font-bold text-base tracking-tight text-slate-900">Veritas</span>
+                        <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">Inspector</span>
+                    </div>
+                    <p class="text-[11px] text-slate-500 font-normal leading-none mt-0.5">Media & Text Authenticity Verification</p>
                 </div>
             </div>
+
+            <!-- Segmented Control Tabs -->
+            <nav class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/80">
+                <button id="tab-image" onclick="switchTab('image')" class="flex items-center gap-2 px-4 py-1.5 text-xs font-semibold rounded-lg bg-white text-slate-900 shadow-sm transition-all">
+                    <i class="fa-regular fa-image text-xs"></i>
+                    <span>Image Inspection</span>
+                </button>
+                <button id="tab-text" onclick="switchTab('text')" class="flex items-center gap-2 px-4 py-1.5 text-xs font-medium rounded-lg text-slate-600 hover:text-slate-900 transition-all">
+                    <i class="fa-regular fa-file-lines text-xs"></i>
+                    <span>Text Analysis</span>
+                </button>
+            </nav>
         </div>
+    </header>
+
+    <!-- Notification Toast / Banner (Hidden by default) -->
+    <div id="toast" class="hidden fixed top-20 right-4 sm:right-6 max-w-md bg-white border border-rose-200 text-rose-800 px-4 py-3 rounded-xl shadow-lg z-50 flex items-start gap-3 transition-all">
+        <i class="fa-solid fa-circle-exclamation text-rose-500 mt-0.5"></i>
+        <div class="flex-1 text-xs">
+            <p class="font-semibold" id="toastTitle">Unable to reach detection service</p>
+            <p class="text-slate-600 mt-0.5" id="toastMessage">Make sure the FastAPI backend is running at http://127.0.0.1:8000.</p>
+        </div>
+        <button onclick="hideToast()" class="text-slate-400 hover:text-slate-600 text-xs p-1">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
     </div>
 
+    <!-- Main Container -->
+    <main class="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-10">
+
+        <!-- Intro Header -->
+        <div class="mb-6">
+            <h1 class="text-2xl font-bold tracking-tight text-slate-900" id="mainTitle">Analyze Image Authenticity</h1>
+            <p class="text-sm text-slate-500 mt-1" id="mainSubtitle">Upload a photo to evaluate visual features, camera metadata, and embedded text for synthetic generation signatures.</p>
+        </div>
+
+        <!-- Card Container -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
+
+            <!-- SECTION: IMAGE INSPECTION -->
+            <div id="section-image" class="block">
+                
+                <!-- Dropzone -->
+                <div id="dropzone" class="border-2 border-dashed border-slate-300 rounded-xl p-10 sm:p-12 text-center hover:border-slate-400 hover:bg-slate-50/60 transition-all cursor-pointer bg-slate-50/30" onclick="document.getElementById('fileInput').click()">
+                    <div class="w-14 h-14 rounded-full bg-white border border-slate-200 flex items-center justify-center mx-auto mb-3 shadow-xs text-slate-600">
+                        <i class="fa-solid fa-arrow-up-from-bracket text-lg"></i>
+                    </div>
+                    <p class="text-sm font-semibold text-slate-800">
+                        Click to upload <span class="font-normal text-slate-500">or drag and drop an image</span>
+                    </p>
+                    <p class="text-xs text-slate-400 mt-1.5">
+                        PNG, JPG, or WEBP up to 15MB • Automatic OCR text detection
+                    </p>
+                    <div class="mt-4 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 text-[11px] font-medium text-slate-500 border border-slate-200/60">
+                        <i class="fa-regular fa-clipboard"></i>
+                        <span>You can also paste an image directly with Ctrl + V</span>
+                    </div>
+                    <input type="file" id="fileInput" class="hidden" accept="image/*" onchange="handleFile(this.files[0])">
+                </div>
+
+                <!-- Image Preview Box (Hidden initially) -->
+                <div id="imagePreviewContainer" class="hidden flex-col items-center">
+                    <div class="w-full flex items-center justify-between pb-3 mb-4 border-b border-slate-100">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-500 text-xs">
+                                <i class="fa-regular fa-image"></i>
+                            </div>
+                            <div>
+                                <p id="previewFilename" class="text-xs font-semibold text-slate-900 truncate max-w-[200px] sm:max-w-xs">image.jpg</p>
+                                <p id="previewFilesize" class="text-[11px] text-slate-500 font-mono">0 KB</p>
+                            </div>
+                        </div>
+                        <button onclick="clearImage()" class="text-xs font-medium text-slate-500 hover:text-rose-600 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">
+                            <i class="fa-regular fa-trash-can text-[11px]"></i>
+                            <span>Remove</span>
+                        </button>
+                    </div>
+
+                    <div class="w-full flex justify-center bg-slate-50 rounded-xl border border-slate-200/80 p-4 mb-6">
+                        <img id="imagePreview" class="max-h-80 rounded-lg shadow-xs object-contain border border-slate-200/60" src="" alt="Selected Preview">
+                    </div>
+
+                    <div class="w-full flex gap-3">
+                        <button onclick="analyzeImage()" id="btnAnalyzeImage" class="flex-1 py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-sm font-semibold shadow-xs flex items-center justify-center gap-2 transition-all cursor-pointer">
+                            <i class="fa-solid fa-play text-xs"></i>
+                            <span>Inspect Image</span>
+                        </button>
+                        <button onclick="document.getElementById('fileInput').click()" class="py-2.5 px-4 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-sm font-medium transition-all">
+                            Choose another
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- SECTION: TEXT ANALYSIS -->
+            <div id="section-text" class="hidden">
+                <div class="relative">
+                    <textarea id="textInput" rows="7" oninput="updateTextCounts()" class="w-full bg-slate-50/50 border border-slate-200 rounded-xl p-4 text-slate-800 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 transition-all resize-y" placeholder="Paste an article, paragraph, or essay here to check if it was generated by an AI model..."></textarea>
+                    
+                    <!-- Text Toolbar -->
+                    <div class="flex items-center justify-between mt-2 px-1 text-xs text-slate-500">
+                        <div class="flex items-center gap-2 font-mono text-[11px]" id="textCounters">
+                            <span id="charCount">0 characters</span>
+                            <span>•</span>
+                            <span id="wordCount">0 words</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="loadSampleText('ai')" class="text-[11px] font-medium text-slate-600 hover:text-slate-900 underline decoration-slate-300 underline-offset-2">
+                                Sample AI text
+                            </button>
+                            <span class="text-slate-300">|</span>
+                            <button onclick="loadSampleText('human')" class="text-[11px] font-medium text-slate-600 hover:text-slate-900 underline decoration-slate-300 underline-offset-2">
+                                Sample Human text
+                            </button>
+                            <span class="text-slate-300">|</span>
+                            <button onclick="clearText()" class="text-[11px] font-medium text-slate-400 hover:text-rose-600">
+                                Clear
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <button onclick="analyzeText()" id="btnAnalyzeText" class="w-full mt-4 py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-sm font-semibold shadow-xs flex items-center justify-center gap-2 transition-all cursor-pointer">
+                    <i class="fa-solid fa-play text-xs"></i>
+                    <span>Inspect Text</span>
+                </button>
+            </div>
+
+            <!-- LOADING SPINNER -->
+            <div id="loader" class="hidden flex-col items-center justify-center py-12">
+                <div class="w-10 h-10 border-3 border-slate-200 border-t-slate-800 rounded-full animate-spin mb-4"></div>
+                <p id="loaderStatus" class="text-sm font-medium text-slate-700">Analyzing content...</p>
+                <p class="text-xs text-slate-400 mt-1">Evaluating visual features and linguistic indicators</p>
+            </div>
+
+            <!-- RESULTS SECTION -->
+            <div id="resultBox" class="hidden mt-8 pt-8 border-t border-slate-200">
+                
+                <div class="flex items-center justify-between mb-5">
+                    <div>
+                        <h2 class="text-xs uppercase tracking-wider font-semibold text-slate-400">Analysis Summary</h2>
+                        <p class="text-sm font-semibold text-slate-800 mt-0.5" id="resultSubtitle">Multimodal Authenticity Report</p>
+                    </div>
+                    <button onclick="resetUI()" class="text-xs font-medium text-slate-500 hover:text-slate-900 flex items-center gap-1 px-2.5 py-1 rounded-md border border-slate-200 hover:bg-slate-50 transition-colors">
+                        <i class="fa-solid fa-rotate-right text-[10px]"></i>
+                        <span>Start New Scan</span>
+                    </button>
+                </div>
+
+                <!-- COMBINED MULTIMODAL VERDICT BANNER (For Image Scans) -->
+                <div id="multimodalBanner" class="p-4 rounded-xl border mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 border-slate-200">
+                    <div class="flex items-center gap-3">
+                        <div id="multimodalIconBox" class="w-9 h-9 rounded-lg flex items-center justify-center text-sm font-bold bg-slate-200 text-slate-700 shrink-0">
+                            <i id="multimodalIcon" class="fa-solid fa-layer-group"></i>
+                        </div>
+                        <div>
+                            <span class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Unified Multimodal Assessment</span>
+                            <span id="multimodalVerdictText" class="text-sm font-bold text-slate-900">Authentic Visuals with Human-Written Text</span>
+                        </div>
+                    </div>
+                    <span id="multimodalPill" class="text-xs font-semibold px-2.5 py-1 rounded-full border self-start sm:self-center"></span>
+                </div>
+
+                <!-- DUAL DETECTION GRID: Image Visuals & Text (Side-by-Side) -->
+                <div id="dualResultsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
+                    
+                    <!-- PANEL 1: Visual Image Analysis -->
+                    <div id="visualPanel" class="p-5 rounded-xl border bg-white border-slate-200 flex flex-col justify-between shadow-xs">
+                        <div>
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-7 h-7 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 text-xs">
+                                        <i class="fa-regular fa-image"></i>
+                                    </div>
+                                    <h3 class="text-xs font-semibold text-slate-800">1. Visual Image Analysis</h3>
+                                </div>
+                                <span id="visualBadge" class="text-[11px] font-semibold px-2 py-0.5 rounded-full border"></span>
+                            </div>
+                            
+                            <h4 id="visualVerdictHeading" class="text-xl font-bold text-slate-900 mb-1"></h4>
+                            <p id="visualDescription" class="text-xs text-slate-500 mb-4 leading-relaxed"></p>
+                        </div>
+
+                        <div>
+                            <div class="flex items-center justify-between text-xs text-slate-600 mb-1 font-medium">
+                                <span>Visual Confidence</span>
+                                <span id="visualConfidenceValue" class="font-bold text-slate-900">0%</span>
+                            </div>
+                            <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden border border-slate-200/60">
+                                <div id="visualConfidenceBar" class="progress-bar h-full rounded-full w-0"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- PANEL 2: Embedded Text (OCR) Analysis -->
+                    <div id="textPanel" class="p-5 rounded-xl border bg-white border-slate-200 flex flex-col justify-between shadow-xs">
+                        <div>
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-7 h-7 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 text-xs">
+                                        <i class="fa-solid fa-font"></i>
+                                    </div>
+                                    <h3 class="text-xs font-semibold text-slate-800">2. Embedded Text Analysis</h3>
+                                </div>
+                                <span id="ocrVerdictBadge" class="text-[11px] font-semibold px-2 py-0.5 rounded-full border"></span>
+                            </div>
+
+                            <!-- Case A: Text was found in the image -->
+                            <div id="ocrFoundContainer">
+                                <h4 id="ocrVerdictHeading" class="text-xl font-bold text-slate-900 mb-1"></h4>
+                                <div class="flex items-center justify-between text-xs text-slate-600 mb-1 font-medium">
+                                    <span>Linguistic Confidence</span>
+                                    <span id="ocrConfidenceValue" class="font-bold text-slate-900">0%</span>
+                                </div>
+                                <div class="w-full bg-slate-100 rounded-full h-2 mb-3 overflow-hidden border border-slate-200/60">
+                                    <div id="ocrConfidenceBar" class="progress-bar h-full rounded-full w-0"></div>
+                                </div>
+
+                                <!-- Text Snippet Box -->
+                                <div>
+                                    <div class="flex items-center justify-between text-[11px] text-slate-500 mb-1">
+                                        <span class="font-medium text-slate-600">Extracted Snippet</span>
+                                        <div class="flex items-center gap-2">
+                                            <span id="ocrWordCountBadge" class="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-mono">0 words</span>
+                                            <button onclick="copyExtractedText()" class="text-slate-600 hover:text-slate-900 font-medium flex items-center gap-1">
+                                                <i class="fa-regular fa-copy text-[10px]"></i>
+                                                <span id="copyBtnText">Copy</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div id="ocrReadoutText" class="bg-slate-50 p-2.5 rounded-lg border border-slate-200/80 text-xs text-slate-700 font-mono leading-relaxed max-h-36 overflow-y-auto whitespace-pre-wrap select-text"></div>
+                                </div>
+                            </div>
+
+                            <!-- Case B: No text found in the image -->
+                            <div id="ocrEmptyContainer" class="hidden py-6 text-center">
+                                <div class="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-2 text-slate-400">
+                                    <i class="fa-regular fa-file-lines text-xs"></i>
+                                </div>
+                                <p class="text-xs font-semibold text-slate-700">No Embedded Text Detected</p>
+                                <p class="text-[11px] text-slate-400 mt-1 max-w-xs mx-auto leading-relaxed">No readable textual payload was detected in this image. Evaluation is based strictly on visual forensic patterns.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- STANDALONE TEXT VERDICT CARD (Used for Text Analysis tab) -->
+                <div id="standaloneTextCard" class="hidden p-5 rounded-xl border mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div class="flex items-start sm:items-center gap-3.5">
+                        <div id="textOnlyIconContainer" class="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0">
+                            <i id="textOnlyIcon" class="fa-solid fa-file-lines"></i>
+                        </div>
+                        <div>
+                            <span id="textOnlyBadge" class="text-[11px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full inline-block mb-1"></span>
+                            <h3 id="textOnlyHeading" class="text-xl font-bold text-slate-900"></h3>
+                            <p id="textOnlyDescription" class="text-xs text-slate-600 mt-0.5"></p>
+                        </div>
+                    </div>
+
+                    <div class="sm:text-right shrink-0 min-w-[140px] pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200/60">
+                        <span class="text-[11px] text-slate-500 font-medium block">Confidence Score</span>
+                        <span id="textOnlyConfidence" class="text-2xl font-bold text-slate-900 tracking-tight">0%</span>
+                        <div class="w-full bg-slate-200/80 rounded-full h-2 mt-1.5 overflow-hidden">
+                            <div id="textOnlyBar" class="progress-bar h-full rounded-full w-0"></div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- Help / Method Callout -->
+        <div class="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs text-slate-500">
+            <div class="p-4 rounded-xl bg-white border border-slate-200/80">
+                <span class="font-semibold text-slate-700 block mb-1">Visual Signatures</span>
+                <span>Analyzes pixel inconsistencies, diffusion noise patterns, and facial rendering cues.</span>
+            </div>
+            <div class="p-4 rounded-xl bg-white border border-slate-200/80">
+                <span class="font-semibold text-slate-700 block mb-1">Hardware Provenance</span>
+                <span>Checks camera metadata (EXIF make, model, timestamp) and authentic mobile capture traces.</span>
+            </div>
+            <div class="p-4 rounded-xl bg-white border border-slate-200/80">
+                <span class="font-semibold text-slate-700 block mb-1">Linguistic Analysis</span>
+                <span>Evaluates sentence length variability, perplexity, and stylistic markers of LLM outputs.</span>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="w-full border-t border-slate-200 bg-white py-6 mt-12">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+            <div class="flex items-center gap-2">
+                <span class="font-medium text-slate-700">Veritas Content Inspector</span>
+                <span>•</span>
+                <span>Academic & Forensic Research Project</span>
+            </div>
+            <div class="text-slate-400">
+                FastAPI & Deep Learning Multimodal System
+            </div>
+        </div>
+    </footer>
+
+    <!-- Logic Script -->
     <script>
+        let currentFile = null;
+        let activeTab = 'image';
+
+        // Auto-detect base API URL (supports standalone file:// opening or FastAPI served /)
+        const API_BASE = window.location.origin.includes('127.0.0.1') || window.location.origin.includes('localhost')
+            ? ''
+            : 'http://127.0.0.1:8000';
+
+        // Switch Tabs
         function switchTab(tab) {
-            document.getElementById('resultBox').classList.add('hidden');
-            if (tab === 'image') {
-                document.getElementById('imageSection').classList.remove('hidden');
-                document.getElementById('textSection').classList.add('hidden');
-                document.getElementById('tabImgBtn').className = "px-4 py-1.5 text-sm font-medium rounded-md bg-indigo-500 text-white shadow";
-                document.getElementById('tabTxtBtn').className = "px-4 py-1.5 text-sm font-medium rounded-md text-slate-400 hover:text-white transition";
+            activeTab = tab;
+            const isImage = tab === 'image';
+            
+            document.getElementById('section-image').classList.toggle('hidden', !isImage);
+            document.getElementById('section-text').classList.toggle('hidden', isImage);
+            
+            // Tab Buttons Styling
+            const tabImg = document.getElementById('tab-image');
+            const tabTxt = document.getElementById('tab-text');
+            if (isImage) {
+                tabImg.className = "flex items-center gap-2 px-4 py-1.5 text-xs font-semibold rounded-lg bg-white text-slate-900 shadow-sm transition-all";
+                tabTxt.className = "flex items-center gap-2 px-4 py-1.5 text-xs font-medium rounded-lg text-slate-600 hover:text-slate-900 transition-all";
+                document.getElementById('mainTitle').textContent = "Analyze Image Authenticity";
+                document.getElementById('mainSubtitle').textContent = "Upload a photo to evaluate visual features, camera metadata, and embedded text for synthetic generation signatures.";
             } else {
-                document.getElementById('imageSection').classList.add('hidden');
-                document.getElementById('textSection').classList.remove('hidden');
-                document.getElementById('tabTxtBtn').className = "px-4 py-1.5 text-sm font-medium rounded-md bg-indigo-500 text-white shadow";
-                document.getElementById('tabImgBtn').className = "px-4 py-1.5 text-sm font-medium rounded-md text-slate-400 hover:text-white transition";
+                tabTxt.className = "flex items-center gap-2 px-4 py-1.5 text-xs font-semibold rounded-lg bg-white text-slate-900 shadow-sm transition-all";
+                tabImg.className = "flex items-center gap-2 px-4 py-1.5 text-xs font-medium rounded-lg text-slate-600 hover:text-slate-900 transition-all";
+                document.getElementById('mainTitle').textContent = "Analyze Written Text";
+                document.getElementById('mainSubtitle').textContent = "Inspect text or articles to assess linguistic burstiness, perplexity, and stylistic cues typical of language models.";
+            }
+
+            resetResults();
+        }
+
+        // File Handling
+        function handleFile(file) {
+            if (!file) return;
+            if (!file.type.startsWith('image/')) {
+                showToast("Invalid file format", "Please select a valid image file (JPG, PNG, or WEBP).");
+                return;
+            }
+
+            currentFile = file;
+            document.getElementById('previewFilename').textContent = file.name;
+            document.getElementById('previewFilesize').textContent = formatBytes(file.size);
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById('imagePreview').src = e.target.result;
+                document.getElementById('dropzone').classList.add('hidden');
+                document.getElementById('imagePreviewContainer').classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+            resetResults();
+        }
+
+        function clearImage() {
+            currentFile = null;
+            document.getElementById('fileInput').value = '';
+            document.getElementById('imagePreview').src = '';
+            document.getElementById('imagePreviewContainer').classList.add('hidden');
+            document.getElementById('dropzone').classList.remove('hidden');
+            resetResults();
+        }
+
+        // Drag and drop event listeners
+        const dropzone = document.getElementById('dropzone');
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropzone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                dropzone.classList.add('dropzone-active');
+            }, false);
+        });
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropzone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                dropzone.classList.remove('dropzone-active');
+            }, false);
+        });
+        dropzone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files && files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        // Clipboard paste image support
+        window.addEventListener('paste', (e) => {
+            if (activeTab !== 'image') return;
+            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].type.indexOf('image') !== -1) {
+                    const blob = items[i].getAsFile();
+                    handleFile(blob);
+                    break;
+                }
+            }
+        });
+
+        // Text counters & utilities
+        function updateTextCounts() {
+            const text = document.getElementById('textInput').value;
+            const chars = text.length;
+            const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+            document.getElementById('charCount').textContent = `${chars} characters`;
+            document.getElementById('wordCount').textContent = `${words} words`;
+        }
+
+        function clearText() {
+            document.getElementById('textInput').value = '';
+            updateTextCounts();
+            resetResults();
+        }
+
+        function loadSampleText(type) {
+            const sampleAI = "The rapid development of artificial intelligence marks a transformative milestone across multifaceted domains. Furthermore, it serves as a testament to human innovation, underscoring new paradigms in machine learning architectures while reshaping the digital frontier.";
+            const sampleHuman = "I just got back from the grocery store and realized I completely forgot to buy milk. Honestly don't feel like driving back out in this traffic, so I guess black coffee it is for tomorrow morning!";
+            
+            document.getElementById('textInput').value = type === 'ai' ? sampleAI : sampleHuman;
+            updateTextCounts();
+            resetResults();
+        }
+
+        // Helper to format file sizes
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+
+        // Reset functions
+        function resetResults() {
+            document.getElementById('resultBox').classList.add('hidden');
+            document.getElementById('loader').classList.add('hidden');
+            if (document.getElementById('visualConfidenceBar')) document.getElementById('visualConfidenceBar').style.width = '0%';
+            if (document.getElementById('ocrConfidenceBar')) document.getElementById('ocrConfidenceBar').style.width = '0%';
+            if (document.getElementById('textOnlyBar')) document.getElementById('textOnlyBar').style.width = '0%';
+        }
+
+        function resetUI() {
+            resetResults();
+            if (activeTab === 'image') {
+                clearImage();
+            } else {
+                clearText();
             }
         }
 
-        function showResult(prediction, confidence) {
+        // Display results
+        function displayResults(data, isTextOnly = false) {
             document.getElementById('loader').classList.add('hidden');
             document.getElementById('resultBox').classList.remove('hidden');
-            const verdictEl = document.getElementById('verdictText');
-            verdictEl.textContent = prediction;
-            verdictEl.className = prediction.includes("AI") ? "text-2xl font-extrabold mt-1 text-rose-500" : "text-2xl font-extrabold mt-1 text-emerald-400";
-            document.getElementById('confidenceText').textContent = confidence + "%";
+
+            const multimodalBanner = document.getElementById('multimodalBanner');
+            const dualResultsGrid = document.getElementById('dualResultsGrid');
+            const standaloneTextCard = document.getElementById('standaloneTextCard');
+
+            if (isTextOnly) {
+                // Standalone Text Mode
+                multimodalBanner.classList.add('hidden');
+                dualResultsGrid.classList.add('hidden');
+                standaloneTextCard.classList.remove('hidden');
+
+                const isAI = data.prediction.toLowerCase().includes("ai") || data.prediction.toLowerCase().includes("generated");
+                const conf = data.confidence_score || 0;
+
+                const card = document.getElementById('standaloneTextCard');
+                const iconBox = document.getElementById('textOnlyIconContainer');
+                const badge = document.getElementById('textOnlyBadge');
+                const heading = document.getElementById('textOnlyHeading');
+                const desc = document.getElementById('textOnlyDescription');
+                const bar = document.getElementById('textOnlyBar');
+
+                if (isAI) {
+                    card.className = "p-5 rounded-xl border border-rose-200 bg-rose-50/40 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4";
+                    iconBox.className = "w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 bg-rose-100 text-rose-700 border border-rose-200";
+                    badge.className = "text-[11px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full inline-block mb-1 bg-rose-100 text-rose-800 border border-rose-200";
+                    badge.textContent = "AI Signal Detected";
+                    heading.textContent = data.prediction;
+                    heading.className = "text-xl font-bold text-rose-950";
+                    desc.textContent = "Linguistic structure, uniform sentence rhythms, and token patterns align strongly with synthetic language models.";
+                    bar.className = "progress-bar h-full rounded-full bg-rose-600";
+                } else {
+                    card.className = "p-5 rounded-xl border border-emerald-200 bg-emerald-50/40 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4";
+                    iconBox.className = "w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 bg-emerald-100 text-emerald-700 border border-emerald-200";
+                    badge.className = "text-[11px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full inline-block mb-1 bg-emerald-100 text-emerald-800 border border-emerald-200";
+                    badge.textContent = "Authentic Signal";
+                    heading.textContent = data.prediction;
+                    heading.className = "text-xl font-bold text-emerald-950";
+                    desc.textContent = "Sentence length variance, vocabulary diversity, and conversational cadence indicate human writing.";
+                    bar.className = "progress-bar h-full rounded-full bg-emerald-600";
+                }
+
+                document.getElementById('textOnlyConfidence').textContent = conf + "%";
+                setTimeout(() => { bar.style.width = conf + "%"; }, 60);
+
+            } else {
+                // Multimodal Image + Text Mode (Side-by-Side Dual Analysis)
+                multimodalBanner.classList.remove('hidden');
+                dualResultsGrid.classList.remove('hidden');
+                standaloneTextCard.classList.add('hidden');
+
+                const isImgAI = data.prediction.toLowerCase().includes("ai") || data.prediction.toLowerCase().includes("generated");
+                const imgConf = data.confidence_score || 0;
+                const hasText = Boolean(data.has_text);
+                const isTxtAI = hasText && (data.text_prediction.toLowerCase().includes("ai") || data.text_prediction.toLowerCase().includes("generated"));
+                const txtConf = data.text_confidence || 0;
+
+                // 1. Multimodal Combined Header Banner
+                const banner = document.getElementById('multimodalBanner');
+                const bannerIconBox = document.getElementById('multimodalIconBox');
+                const bannerIcon = document.getElementById('multimodalIcon');
+                const bannerText = document.getElementById('multimodalVerdictText');
+                const bannerPill = document.getElementById('multimodalPill');
+
+                bannerText.textContent = data.multimodal_verdict || (isImgAI ? "AI-Generated Visuals Detected" : "Authentic Photograph");
+
+                if (!isImgAI && (!hasText || !isTxtAI)) {
+                    // Overall Authentic
+                    banner.className = "p-4 rounded-xl border mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-emerald-50/60 border-emerald-200";
+                    bannerIconBox.className = "w-9 h-9 rounded-lg flex items-center justify-center text-sm font-bold bg-emerald-100 text-emerald-700 shrink-0";
+                    bannerIcon.className = "fa-solid fa-shield-check";
+                    bannerPill.className = "text-xs font-semibold px-2.5 py-1 rounded-full border bg-emerald-100 text-emerald-800 border-emerald-200 self-start sm:self-center";
+                    bannerPill.textContent = "Authentic Content";
+                } else if (isImgAI && (hasText && isTxtAI)) {
+                    // Both AI
+                    banner.className = "p-4 rounded-xl border mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-rose-50/60 border-rose-200";
+                    bannerIconBox.className = "w-9 h-9 rounded-lg flex items-center justify-center text-sm font-bold bg-rose-100 text-rose-700 shrink-0";
+                    bannerIcon.className = "fa-solid fa-triangle-exclamation";
+                    bannerPill.className = "text-xs font-semibold px-2.5 py-1 rounded-full border bg-rose-100 text-rose-800 border-rose-200 self-start sm:self-center";
+                    bannerPill.textContent = "AI-Generated (Image & Text)";
+                } else {
+                    // Mixed
+                    banner.className = "p-4 rounded-xl border mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-amber-50/60 border-amber-200";
+                    bannerIconBox.className = "w-9 h-9 rounded-lg flex items-center justify-center text-sm font-bold bg-amber-100 text-amber-700 shrink-0";
+                    bannerIcon.className = "fa-solid fa-triangle-exclamation";
+                    bannerPill.className = "text-xs font-semibold px-2.5 py-1 rounded-full border bg-amber-100 text-amber-800 border-amber-200 self-start sm:self-center";
+                    bannerPill.textContent = "Mixed Authenticity";
+                }
+
+                // 2. Visual Image Panel
+                const visualPanel = document.getElementById('visualPanel');
+                const visualBadge = document.getElementById('visualBadge');
+                const visualHeading = document.getElementById('visualVerdictHeading');
+                const visualDesc = document.getElementById('visualDescription');
+                const visualBar = document.getElementById('visualConfidenceBar');
+
+                visualHeading.textContent = data.prediction;
+                document.getElementById('visualConfidenceValue').textContent = imgConf + "%";
+
+                if (isImgAI) {
+                    visualPanel.className = "p-5 rounded-xl border bg-rose-50/30 border-rose-200 flex flex-col justify-between shadow-xs";
+                    visualBadge.className = "text-[11px] font-semibold px-2.5 py-0.5 rounded-full border bg-rose-100 text-rose-800 border-rose-200";
+                    visualBadge.textContent = "AI Signal";
+                    visualHeading.className = "text-xl font-bold text-rose-950 mb-1";
+                    visualDesc.textContent = "Pixel features, latent diffusion artifacts, and lighting inconsistencies suggest synthetic generation.";
+                    visualBar.className = "progress-bar h-full rounded-full bg-rose-600";
+                } else {
+                    visualPanel.className = "p-5 rounded-xl border bg-emerald-50/30 border-emerald-200 flex flex-col justify-between shadow-xs";
+                    visualBadge.className = "text-[11px] font-semibold px-2.5 py-0.5 rounded-full border bg-emerald-100 text-emerald-800 border-emerald-200";
+                    visualBadge.textContent = "Real Photograph";
+                    visualHeading.className = "text-xl font-bold text-emerald-950 mb-1";
+                    visualDesc.textContent = "Hardware provenance, natural lighting, and camera noise distribution correspond with authentic capture.";
+                    visualBar.className = "progress-bar h-full rounded-full bg-emerald-600";
+                }
+                setTimeout(() => { visualBar.style.width = imgConf + "%"; }, 60);
+
+                // 3. Embedded Text Panel
+                const textPanel = document.getElementById('textPanel');
+                const ocrBadge = document.getElementById('ocrVerdictBadge');
+                const ocrFoundContainer = document.getElementById('ocrFoundContainer');
+                const ocrEmptyContainer = document.getElementById('ocrEmptyContainer');
+
+                if (hasText) {
+                    ocrFoundContainer.classList.remove('hidden');
+                    ocrEmptyContainer.classList.add('hidden');
+
+                    const ocrHeading = document.getElementById('ocrVerdictHeading');
+                    const ocrBar = document.getElementById('ocrConfidenceBar');
+                    ocrHeading.textContent = data.text_prediction;
+                    document.getElementById('ocrConfidenceValue').textContent = txtConf + "%";
+
+                    if (isTxtAI) {
+                        textPanel.className = "p-5 rounded-xl border bg-rose-50/30 border-rose-200 flex flex-col justify-between shadow-xs";
+                        ocrBadge.className = "text-[11px] font-semibold px-2.5 py-0.5 rounded-full border bg-rose-100 text-rose-800 border-rose-200";
+                        ocrBadge.textContent = "AI Text Signal";
+                        ocrHeading.className = "text-xl font-bold text-rose-950 mb-1";
+                        ocrBar.className = "progress-bar h-full rounded-full bg-rose-600";
+                    } else {
+                        textPanel.className = "p-5 rounded-xl border bg-emerald-50/30 border-emerald-200 flex flex-col justify-between shadow-xs";
+                        ocrBadge.className = "text-[11px] font-semibold px-2.5 py-0.5 rounded-full border bg-emerald-100 text-emerald-800 border-emerald-200";
+                        ocrBadge.textContent = "Human Written";
+                        ocrHeading.className = "text-xl font-bold text-emerald-950 mb-1";
+                        ocrBar.className = "progress-bar h-full rounded-full bg-emerald-600";
+                    }
+
+                    const words = data.extracted_text.trim() ? data.extracted_text.trim().split(/\s+/).length : 0;
+                    document.getElementById('ocrWordCountBadge').textContent = `${words} words`;
+                    document.getElementById('ocrReadoutText').textContent = data.extracted_text;
+
+                    setTimeout(() => { ocrBar.style.width = txtConf + "%"; }, 100);
+                } else {
+                    ocrFoundContainer.classList.add('hidden');
+                    ocrEmptyContainer.classList.remove('hidden');
+                    textPanel.className = "p-5 rounded-xl border bg-slate-50/50 border-slate-200 flex flex-col justify-between shadow-xs";
+                    ocrBadge.className = "text-[11px] font-semibold px-2.5 py-0.5 rounded-full border bg-slate-100 text-slate-500 border-slate-200";
+                    ocrBadge.textContent = "No Text Detected";
+                }
+            }
         }
 
-        async function verifyImage() {
-            const input = document.getElementById('fileInput');
-            if (!input.files || !input.files[0]) return;
-            
-            document.getElementById('uploadPrompt').classList.add('hidden');
-            const preview = document.getElementById('preview');
-            preview.src = URL.createObjectURL(input.files[0]);
-            preview.classList.remove('hidden');
-            
-            document.getElementById('resultBox').classList.add('hidden');
+        // Action: Analyze Image
+        async function analyzeImage() {
+            if (!currentFile) return;
+
             document.getElementById('loader').classList.remove('hidden');
+            document.getElementById('loaderStatus').textContent = "Inspecting image...";
+            document.getElementById('resultBox').classList.add('hidden');
 
             const formData = new FormData();
-            formData.append('file', input.files[0]);
+            formData.append("file", currentFile);
 
             try {
-                const res = await fetch('/detect/image', { method: 'POST', body: formData });
+                const res = await fetch(`${API_BASE}/detect/image`, {
+                    method: "POST",
+                    body: formData
+                });
+                
+                if (!res.ok) {
+                    throw new Error(`Server responded with status ${res.status}`);
+                }
                 const data = await res.json();
-                showResult(data.prediction, data.confidence_score);
-            } catch (e) {
-                alert("Error analyzing image.");
+                displayResults(data, false);
+            } catch (err) {
                 document.getElementById('loader').classList.add('hidden');
+                showToast("Inspection failed", "Could not connect to the detection API. Please ensure the backend is running at http://127.0.0.1:8000.");
             }
         }
 
-        async function verifyText() {
-            const text = document.getElementById('textInput').value;
-            if (!text.trim()) return;
+        // Action: Analyze Text
+        async function analyzeText() {
+            const text = document.getElementById('textInput').value.trim();
+            if (!text) {
+                showToast("Empty input", "Please enter or paste some text to inspect.");
+                return;
+            }
 
-            document.getElementById('resultBox').classList.add('hidden');
             document.getElementById('loader').classList.remove('hidden');
+            document.getElementById('loaderStatus').textContent = "Evaluating text patterns...";
+            document.getElementById('resultBox').classList.add('hidden');
 
             try {
-                const res = await fetch('/detect/text', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                const res = await fetch(`${API_BASE}/detect/text`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ text: text })
                 });
+
+                if (!res.ok) {
+                    throw new Error(`Server responded with status ${res.status}`);
+                }
                 const data = await res.json();
-                showResult(data.prediction, data.confidence_score);
-            } catch (e) {
-                alert("Error analyzing text.");
+                displayResults(data, true);
+            } catch (err) {
                 document.getElementById('loader').classList.add('hidden');
+                showToast("Inspection failed", "Could not connect to the detection API. Please ensure the backend is running at http://127.0.0.1:8000.");
             }
+        }
+
+        // Toast notifications
+        function showToast(title, message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastTitle').textContent = title;
+            document.getElementById('toastMessage').textContent = message;
+            toast.classList.remove('hidden');
+            setTimeout(() => {
+                hideToast();
+            }, 6000);
+        }
+
+        function hideToast() {
+            document.getElementById('toast').classList.add('hidden');
+        }
+
+        // Copy text helper
+        function copyExtractedText() {
+            const text = document.getElementById('ocrReadoutText').textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                const copyBtnText = document.getElementById('copyBtnText');
+                copyBtnText.textContent = "Copied!";
+                setTimeout(() => {
+                    copyBtnText.textContent = "Copy text";
+                }, 2000);
+            });
         }
     </script>
 </body>
